@@ -23,17 +23,13 @@
                 </div>
                 <div>
                     <h1 class="text-2xl font-bold tracking-tight">Living in Harmony <span class="text-emerald-400 font-light">Foundation</span></h1>
-                    <p class="text-emerald-200 text-sm">Charity Golf Tournament - Persistent Dashboard</p>
+                    <p class="text-emerald-200 text-sm">Charity Golf Tournament - Cloud Synchronized Dashboard</p>
                 </div>
             </div>
             <div class="flex items-center gap-3 flex-wrap">
                 <button onclick="exportData()" class="bg-emerald-700 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 cursor-pointer shadow-sm">
                     <i class="fa-solid fa-download"></i> Export Data
                 </button>
-                <label class="bg-emerald-700 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 cursor-pointer shadow-sm">
-                    <i class="fa-solid fa-upload"></i> Import
-                    <input type="file" id="importFile" class="hidden" onchange="importData(event)">
-                </label>
             </div>
         </div>
     </header>
@@ -214,7 +210,6 @@
                 <form id="scorecardForm" onsubmit="saveScorecard(event)">
                     <input type="hidden" id="activeScorePlayerId">
                     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 mb-6">
-                        <!-- Generated 18 Hole inputs -->
                         <div id="holesInputContainer" class="col-span-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3"></div>
                     </div>
                     <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 flex justify-between items-center">
@@ -279,66 +274,114 @@
         </div>
     </div>
 
-    <script>
-        // Storage Key for LocalStorage
-        const STORAGE_KEY = 'harmony_golf_tournament_data_v3';
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, collection, setDoc, updateDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Default app state structure
+        const STORAGE_KEY = 'harmony_golf_tournament_data_v3';
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'harmony-golf-tournament';
+
+        let db = null;
+        let auth = null;
+        let isCloudActive = false;
+
+        // Shared Tournament State
         let tournamentState = {
             nextNumber: 1,
             players: []
         };
 
-        // Initialize application on page load
-        document.addEventListener('DOMContentLoaded', () => {
-            loadFromLocalStorage();
+        async function initApp() {
             populateHoleSelects();
-            renderAll();
-        });
 
-        // Load data from localStorage
+            try {
+                if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                    const firebaseConfig = JSON.parse(__firebase_config);
+                    const app = initializeApp(firebaseConfig);
+                    db = getFirestore(app);
+                    auth = getAuth(app);
+
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+
+                    if (auth.currentUser) {
+                        isCloudActive = true;
+                        setupCloudListeners();
+                        return;
+                    }
+                }
+            } catch (err) {
+                console.warn("Cloud connection error, using local mode fallback:", err);
+            }
+
+            // LocalStorage Fallback if Cloud Config is absent
+            isCloudActive = false;
+            loadFromLocalStorage();
+            renderAll();
+        }
+
+        function setupCloudListeners() {
+            if (!db) return;
+
+            // Rule 1 strictly followed: /artifacts/{appId}/public/data/players
+            const playersColRef = collection(db, 'artifacts', appId, 'public', 'data', 'players');
+            onSnapshot(playersColRef, (snapshot) => {
+                const updatedPlayers = [];
+                snapshot.forEach((docSnap) => {
+                    updatedPlayers.push({ id: docSnap.id, ...docSnap.data() });
+                });
+                tournamentState.players = updatedPlayers;
+                renderAll();
+            }, (error) => {
+                console.error("Cloud sync error for players:", error);
+                showToast("Cloud sync error", true);
+            });
+
+            // Rule 1 strictly followed: /artifacts/{appId}/public/data/settings/counter
+            const metaDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'counter');
+            onSnapshot(metaDocRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    tournamentState.nextNumber = docSnap.data().nextNumber || 1;
+                } else {
+                    setDoc(metaDocRef, { nextNumber: tournamentState.nextNumber || 1 }).catch(console.error);
+                }
+                renderNextNumberBadge();
+            }, (error) => {
+                console.error("Cloud sync error for counter:", error);
+            });
+        }
+
+        // Local Storage Fallback methods
         function loadFromLocalStorage() {
             try {
                 const saved = localStorage.getItem(STORAGE_KEY);
-                if (saved) {
-                    tournamentState = JSON.parse(saved);
-                } else {
-                    const oldSaved = localStorage.getItem('harmony_golf_tournament_data_v2');
-                    if (oldSaved) {
-                        const parsedOld = JSON.parse(oldSaved);
-                        parsedOld.players = parsedOld.players.map(p => ({
-                            id: p.id,
-                            number: p.number,
-                            name: p.name,
-                            phone: p.phone || p.contact || 'N/A',
-                            email: p.email || 'N/A',
-                            scores: p.scores
-                        }));
-                        tournamentState = parsedOld;
-                    }
-                }
+                if (saved) tournamentState = JSON.parse(saved);
             } catch (e) {
-                console.error("Failed to load local storage data:", e);
-                showToast("Error loading saved data.", true);
+                console.error("Failed loading local storage:", e);
             }
         }
 
-        // Save data to localStorage
         function saveToLocalStorage() {
-            try {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(tournamentState));
-            } catch (e) {
-                console.error("Failed to save local storage data:", e);
-                showToast("Error saving data persistently.", true);
+            if (!isCloudActive) {
+                try {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(tournamentState));
+                } catch (e) {
+                    console.error("Failed saving local storage:", e);
+                }
             }
         }
 
-        // Show animated toast notification
+        // Toast Notification System
         function showToast(message, isError = false) {
             const toast = document.getElementById('toast');
             const toastMessage = document.getElementById('toastMessage');
+            if (!toast || !toastMessage) return;
+
             toastMessage.textContent = message;
-            
             if (isError) {
                 toast.classList.remove('bg-emerald-800', 'border-emerald-700');
                 toast.classList.add('bg-red-800', 'border-red-700');
@@ -353,7 +396,6 @@
             }, 3000);
         }
 
-        // Populate Hole Select dropdowns (1-18)
         function populateHoleSelects() {
             const select = document.getElementById('leaderboardHoleSelect');
             if (select) {
@@ -366,7 +408,6 @@
                 }
             }
 
-            // Populate scorecard modal 18 holes with max=99
             const container = document.getElementById('holesInputContainer');
             if (container) {
                 container.innerHTML = '';
@@ -382,8 +423,7 @@
             }
         }
 
-        // Register a new participant
-        function handleRegister(e) {
+        async function handleRegister(e) {
             e.preventDefault();
             const name = document.getElementById('regName').value.trim();
             const phone = document.getElementById('regPhone').value.trim();
@@ -392,15 +432,12 @@
             if (!name || !phone || !email) return;
 
             const playerNo = '#' + String(tournamentState.nextNumber).padStart(3, '0');
-            
-            // Default 18 holes set to 0 scores representing unplayed holes
             const scores = {};
-            for (let i = 1; i <= 18; i++) {
-                scores[i] = 0;
-            }
+            for (let i = 1; i <= 18; i++) scores[i] = 0;
 
+            const newPlayerId = 'player_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
             const newPlayer = {
-                id: 'player_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                id: newPlayerId,
                 number: playerNo,
                 name: name,
                 phone: phone,
@@ -408,17 +445,32 @@
                 scores: scores
             };
 
-            tournamentState.players.push(newPlayer);
-            tournamentState.nextNumber++;
-            saveToLocalStorage();
+            const nextNum = tournamentState.nextNumber + 1;
+
+            if (isCloudActive && db) {
+                try {
+                    const playerDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'players', newPlayerId);
+                    await setDoc(playerDocRef, newPlayer);
+
+                    const metaDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'counter');
+                    await setDoc(metaDocRef, { nextNumber: nextNum });
+                } catch (err) {
+                    console.error("Error writing player to Firestore:", err);
+                    showToast("Failed to save to cloud", true);
+                    return;
+                }
+            } else {
+                tournamentState.players.push(newPlayer);
+                tournamentState.nextNumber = nextNum;
+                saveToLocalStorage();
+                renderAll();
+            }
 
             document.getElementById('registrationForm').reset();
-            
-            renderAll();
-            showToast(`Successfully registered ${name} (${playerNo})`);
+            showToast(`Registered ${name} (${playerNo})`);
         }
 
-        // Render everything
+        // Rendering Dashboard
         function renderAll() {
             renderNextNumberBadge();
             renderStats();
@@ -431,12 +483,10 @@
             if (badge) badge.textContent = '#' + String(tournamentState.nextNumber).padStart(3, '0');
         }
 
-        // Render statistics summary cards
         function renderStats() {
             const players = tournamentState.players;
             document.getElementById('statTotalPlayers').textContent = players.length;
-            
-            // Completed count: considering complete round when all 18 holes > 0
+
             const completedPlayers = players.filter(p => {
                 let complete = true;
                 for (let i = 1; i <= 18; i++) {
@@ -450,7 +500,6 @@
 
             document.getElementById('statActiveCount').textContent = completedPlayers.length;
 
-            // Calculate overall total scores for podium
             const scoredPlayers = completedPlayers.map(p => {
                 let totalScore = 0;
                 for (let i = 1; i <= 18; i++) {
@@ -470,7 +519,6 @@
             }
         }
 
-        // Render participants roster table
         function renderRoster() {
             const tbody = document.getElementById('rosterTableBody');
             const emptyState = document.getElementById('rosterEmptyState');
@@ -479,17 +527,14 @@
             const searchQuery = (document.getElementById('rosterSearch')?.value || '').toLowerCase().trim();
 
             tbody.innerHTML = '';
-            
             const totalCount = tournamentState.players.length;
 
-            // Filter players based on search query
             const filteredPlayers = tournamentState.players.filter(p => {
                 if (!searchQuery) return true;
-                const numMatch = p.number ? p.number.toLowerCase().includes(searchQuery) : false;
-                const nameMatch = p.name ? p.name.toLowerCase().includes(searchQuery) : false;
-                const phoneMatch = p.phone ? p.phone.toLowerCase().includes(searchQuery) : false;
-                const emailMatch = p.email ? p.email.toLowerCase().includes(searchQuery) : false;
-                return numMatch || nameMatch || phoneMatch || emailMatch;
+                return (p.number && p.number.toLowerCase().includes(searchQuery)) ||
+                       (p.name && p.name.toLowerCase().includes(searchQuery)) ||
+                       (p.phone && p.phone.toLowerCase().includes(searchQuery)) ||
+                       (p.email && p.email.toLowerCase().includes(searchQuery));
             });
 
             const displayCountText = searchQuery 
@@ -501,13 +546,6 @@
 
             if (filteredPlayers.length === 0) {
                 emptyState.classList.remove('hidden');
-                if (searchQuery) {
-                    emptyState.querySelector('h3').textContent = 'No matching players found';
-                    emptyState.querySelector('p').textContent = `No search results matching "${escapeHtml(searchQuery)}"`;
-                } else {
-                    emptyState.querySelector('h3').textContent = 'No registered players yet';
-                    emptyState.querySelector('p').textContent = 'Get started by adding participants from the registration form above.';
-                }
                 return;
             }
             emptyState.classList.add('hidden');
@@ -517,7 +555,6 @@
                 let lastHole = 0;
                 let completedHolesCount = 0;
 
-                // Find cumulative total score and highest hole index with score > 0
                 for (let i = 1; i <= 18; i++) {
                     if (p.scores[i] && p.scores[i] > 0) {
                         totalScore += p.scores[i];
@@ -564,12 +601,11 @@
             });
         }
 
-        // Render cumulative leaderboard by selected hole
         function renderLeaderboard() {
             const holeSelect = document.getElementById('leaderboardHoleSelect');
             if (!holeSelect) return;
             const targetHole = parseInt(holeSelect.value) || 1;
-            
+
             document.getElementById('leaderboardTitle').textContent = `Leaderboard after Hole ${targetHole}`;
 
             const tbody = document.getElementById('leaderboardTableBody');
@@ -581,25 +617,20 @@
             const rankings = [];
             tournamentState.players.forEach(p => {
                 let cumulative = 0;
-                let holeScore = p.scores[targetHole] || 0;
+                let holeScore = p.scores ? (p.scores[targetHole] || 0) : 0;
 
                 for (let h = 1; h <= targetHole; h++) {
-                    if (p.scores[h] && p.scores[h] > 0) {
+                    if (p.scores && p.scores[h] && p.scores[h] > 0) {
                         cumulative += p.scores[h];
                     }
                 }
 
                 if (holeScore > 0) {
-                    rankings.push({
-                        ...p,
-                        holeScore,
-                        cumulative
-                    });
+                    rankings.push({ ...p, holeScore, cumulative });
                 }
             });
 
             rankings.sort((a, b) => a.cumulative - b.cumulative);
-
             rankedCount.textContent = `${rankings.length} players ranked`;
 
             if (rankings.length === 0) {
@@ -627,7 +658,6 @@
             });
         }
 
-        // Scorecard Modal Handlers
         function openScorecardModal(playerId) {
             const player = tournamentState.players.find(p => p.id === playerId);
             if (!player) return;
@@ -638,7 +668,7 @@
             const inputs = document.querySelectorAll('.score-hole-input');
             inputs.forEach(input => {
                 const holeNum = input.getAttribute('data-hole');
-                input.value = player.scores[holeNum] !== undefined ? player.scores[holeNum] : 0;
+                input.value = player.scores && player.scores[holeNum] !== undefined ? player.scores[holeNum] : 0;
             });
 
             calculateModalTotal();
@@ -658,25 +688,54 @@
             document.getElementById('modalTotalStrokes').textContent = total;
         }
 
-        function saveScorecard(e) {
+        async function saveScorecard(e) {
             e.preventDefault();
             const playerId = document.getElementById('activeScorePlayerId').value;
             const player = tournamentState.players.find(p => p.id === playerId);
             if (!player) return;
 
+            const updatedScores = {};
             const inputs = document.querySelectorAll('.score-hole-input');
             inputs.forEach(input => {
                 const holeNum = input.getAttribute('data-hole');
-                player.scores[holeNum] = parseInt(input.value) || 0;
+                updatedScores[holeNum] = parseInt(input.value) || 0;
             });
 
-            saveToLocalStorage();
+            if (isCloudActive && db) {
+                try {
+                    const playerDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'players', playerId);
+                    await updateDoc(playerDocRef, { scores: updatedScores });
+                } catch (err) {
+                    console.error("Error updating scorecard in cloud:", err);
+                    showToast("Failed to save scorecard to cloud", true);
+                    return;
+                }
+            } else {
+                player.scores = updatedScores;
+                saveToLocalStorage();
+                renderAll();
+            }
+
             closeScorecardModal();
-            renderAll();
             showToast(`Scorecard saved for ${player.name}`);
         }
 
-        // Edit Participant Modal Handlers
+        // Phone Formatter Utility
+        function formatPhoneInput(input) {
+            let value = input.value.replace(/\D/g, '');
+            if (value.length > 10) value = value.substring(0, 10);
+
+            let formatted = '';
+            if (value.length > 6) {
+                formatted = `(${value.substring(0, 3)}) ${value.substring(3, 6)}-${value.substring(6)}`;
+            } else if (value.length > 3) {
+                formatted = `(${value.substring(0, 3)}) ${value.substring(3)}`;
+            } else if (value.length > 0) {
+                formatted = `(${value}`;
+            }
+            input.value = formatted;
+        }
+
         function openEditModal(playerId) {
             const player = tournamentState.players.find(p => p.id === playerId);
             if (!player) return;
@@ -689,45 +748,41 @@
             document.getElementById('editModal').classList.remove('hidden');
         }
 
-        // Automatic phone formatter function
-        function formatPhoneInput(input) {
-            let value = input.value.replace(/\D/g, ''); // Remove all non-digits
-            if (value.length > 10) {
-                value = value.substring(0, 10); // Limit to 10 digits
-            }
-            
-            let formatted = '';
-            if (value.length > 6) {
-                formatted = `(${value.substring(0, 3)}) ${value.substring(3, 6)}-${value.substring(6)}`;
-            } else if (value.length > 3) {
-                formatted = `(${value.substring(0, 3)}) ${value.substring(3)}`;
-            } else if (value.length > 0) {
-                formatted = `(${value}`;
-            }
-            input.value = formatted;
-        }
-
         function closeEditModal() {
             document.getElementById('editModal').classList.add('hidden');
         }
 
-        function saveEditParticipant(e) {
+        async function saveEditParticipant(e) {
             e.preventDefault();
             const playerId = document.getElementById('editPlayerId').value;
             const player = tournamentState.players.find(p => p.id === playerId);
             if (!player) return;
 
-            player.name = document.getElementById('editName').value.trim();
-            player.phone = document.getElementById('editPhone').value.trim();
-            player.email = document.getElementById('editEmail').value.trim();
+            const name = document.getElementById('editName').value.trim();
+            const phone = document.getElementById('editPhone').value.trim();
+            const email = document.getElementById('editEmail').value.trim();
 
-            saveToLocalStorage();
+            if (isCloudActive && db) {
+                try {
+                    const playerDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'players', playerId);
+                    await updateDoc(playerDocRef, { name, phone, email });
+                } catch (err) {
+                    console.error("Error updating participant in cloud:", err);
+                    showToast("Failed to update in cloud", true);
+                    return;
+                }
+            } else {
+                player.name = name;
+                player.phone = phone;
+                player.email = email;
+                saveToLocalStorage();
+                renderAll();
+            }
+
             closeEditModal();
-            renderAll();
-            showToast(`Updated details for ${player.name}`);
+            showToast(`Updated details for ${name}`);
         }
 
-        // Delete Participant Modal Handlers
         function openDeleteModal(playerId) {
             document.getElementById('deletePlayerId').value = playerId;
             document.getElementById('deleteModal').classList.remove('hidden');
@@ -737,20 +792,33 @@
             document.getElementById('deleteModal').classList.add('hidden');
         }
 
-        function confirmDeleteParticipant() {
+        async function confirmDeleteParticipant() {
             const playerId = document.getElementById('deletePlayerId').value;
             const idx = tournamentState.players.findIndex(p => p.id === playerId);
             if (idx !== -1) {
                 const removedName = tournamentState.players[idx].name;
-                tournamentState.players.splice(idx, 1);
-                saveToLocalStorage();
-                renderAll();
+
+                if (isCloudActive && db) {
+                    try {
+                        const playerDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'players', playerId);
+                        await deleteDoc(playerDocRef);
+                    } catch (err) {
+                        console.error("Error deleting player from cloud:", err);
+                        showToast("Failed to delete from cloud", true);
+                        closeDeleteModal();
+                        return;
+                    }
+                } else {
+                    tournamentState.players.splice(idx, 1);
+                    saveToLocalStorage();
+                    renderAll();
+                }
                 showToast(`Removed ${removedName} from tournament`);
             }
             closeDeleteModal();
         }
 
-        // Export Data feature for backup
+        // Export Data feature
         function exportData() {
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(tournamentState, null, 2));
             const downloadAnchor = document.createElement('a');
@@ -762,34 +830,29 @@
             showToast("Tournament data exported successfully");
         }
 
-        // Import Data feature for backup recovery
-        function importData(event) {
-            const fileReader = new FileReader();
-            if (event.target.files[0]) {
-                fileReader.readAsText(event.target.files[0], "UTF-8");
-                fileReader.onload = (e) => {
-                    try {
-                        const parsed = JSON.parse(e.target.result);
-                        if (parsed && Array.isArray(parsed.players)) {
-                            tournamentState = parsed;
-                            saveToLocalStorage();
-                            renderAll();
-                            showToast("Tournament data imported successfully");
-                        } else {
-                            showToast("Invalid backup file format", true);
-                        }
-                    } catch (err) {
-                        showToast("Error parsing backup JSON file", true);
-                    }
-                };
-            }
-        }
-
-        // Security helper to escape HTML
         function escapeHtml(str) {
             if (!str) return '';
             return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
         }
+
+        window.handleRegister = handleRegister;
+        window.formatPhoneInput = formatPhoneInput;
+        window.openScorecardModal = openScorecardModal;
+        window.closeScorecardModal = closeScorecardModal;
+        window.calculateModalTotal = calculateModalTotal;
+        window.saveScorecard = saveScorecard;
+        window.openEditModal = openEditModal;
+        window.closeEditModal = closeEditModal;
+        window.saveEditParticipant = saveEditParticipant;
+        window.openDeleteModal = openDeleteModal;
+        window.closeDeleteModal = closeDeleteModal;
+        window.confirmDeleteParticipant = confirmDeleteParticipant;
+        window.renderRoster = renderRoster;
+        window.renderLeaderboard = renderLeaderboard;
+        window.exportData = exportData;
+
+        // Start initialization on window load
+        window.addEventListener('DOMContentLoaded', initApp);
     </script>
 </body>
 </html>
