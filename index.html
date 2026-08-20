@@ -279,8 +279,19 @@
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, collection, setDoc, updateDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+        // Your exact Firebase project config
+        const MY_FIREBASE_CONFIG = {
+            apiKey: "AIzaSyDa3WCwX1r8CkalF_MZZWT3JLiiileoXkQ",
+            authDomain: "golf-8f3f2.firebaseapp.com",
+            projectId: "golf-8f3f2",
+            storageBucket: "golf-8f3f2.firebasestorage.app",
+            messagingSenderId: "1016198613038",
+            appId: "1:1016198613038:web:621e9a2ea993446680f7bf",
+            measurementId: "G-1ZV4FSPBVC"
+        };
+
         const STORAGE_KEY = 'harmony_golf_tournament_data_v3';
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'harmony-golf-tournament';
+        const appId = 'harmony-golf-tournament';
 
         let db = null;
         let auth = null;
@@ -296,29 +307,29 @@
             populateHoleSelects();
 
             try {
+                let configToUse = MY_FIREBASE_CONFIG;
                 if (typeof __firebase_config !== 'undefined' && __firebase_config) {
-                    const firebaseConfig = JSON.parse(__firebase_config);
-                    const app = initializeApp(firebaseConfig);
-                    db = getFirestore(app);
-                    auth = getAuth(app);
-
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                        await signInWithCustomToken(auth, __initial_auth_token);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
-
-                    if (auth.currentUser) {
-                        isCloudActive = true;
-                        setupCloudListeners();
-                        return;
-                    }
+                    try { configToUse = JSON.parse(__firebase_config); } catch(e) {}
                 }
+
+                const app = initializeApp(configToUse);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                isCloudActive = true;
+                setupCloudListeners();
+                return;
             } catch (err) {
                 console.warn("Cloud connection error, using local mode fallback:", err);
             }
 
-            // LocalStorage Fallback if Cloud Config is absent
+            // LocalStorage Fallback if Cloud connection fails
             isCloudActive = false;
             loadFromLocalStorage();
             renderAll();
@@ -337,8 +348,13 @@
                 tournamentState.players = updatedPlayers;
                 renderAll();
             }, (error) => {
-                console.error("Cloud sync error for players:", error);
-                showToast("Cloud sync error", true);
+                console.warn("Cloud sync error for players:", error);
+                // Fall back gracefully to local data without alarming toast popups on startup
+                if (isCloudActive) {
+                    isCloudActive = false;
+                    loadFromLocalStorage();
+                    renderAll();
+                }
             });
 
             // Rule 1 strictly followed: /artifacts/{appId}/public/data/settings/counter
@@ -351,7 +367,7 @@
                 }
                 renderNextNumberBadge();
             }, (error) => {
-                console.error("Cloud sync error for counter:", error);
+                console.warn("Cloud sync error for counter:", error);
             });
         }
 
