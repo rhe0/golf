@@ -55,7 +55,15 @@
                     <i class="fa-solid fa-users text-xl"></i>
                 </div>
             </div>
-                        </div>
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+                <div>
+                    <p class="text-slate-500 text-sm font-medium">Completed Participants</p>
+                    <h4 id="statActiveCount" class="text-3xl font-bold text-slate-900 mt-1">0</h4>
+                </div>
+                <div class="bg-amber-50 text-amber-600 p-4 rounded-xl">
+                    <i class="fa-solid fa-user-check text-xl"></i>
+                </div>
+            </div>
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
                 <div>
                     <p class="text-slate-500 text-sm font-medium">Top 3 Leaderboard</p>
@@ -354,7 +362,7 @@
                     div.className = 'bg-slate-50 p-3 rounded-xl border border-slate-200';
                     div.innerHTML = `
                         <label class="block text-xs font-semibold text-slate-700 mb-1">Hole ${i}</label>
-                        <input type="number" min="0" max="15" value="0" data-hole="${i}" onchange="calculateModalTotal()" class="score-hole-input w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-center font-mono text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                        <input type="number" min="0" max="99" value="0" data-hole="${i}" onchange="calculateModalTotal()" class="score-hole-input w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-center font-mono text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
                     `;
                     container.appendChild(div);
                 }
