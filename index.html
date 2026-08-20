@@ -45,6 +45,42 @@
 
     <main class="max-w-7xl mx-auto px-4 w-full flex-grow space-y-8 pb-16">
 
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="px-6 py-4 bg-emerald-900 text-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <div>
+                    <h2 class="font-bold text-lg flex items-center gap-2">
+                        <i class="fa-solid fa-user-plus text-emerald-400"></i> Register New Participant
+                    </h2>
+                    <p class="text-emerald-200 text-xs mt-0.5">Enter details below to register a player for the tournament.</p>
+                </div>
+                <div class="bg-emerald-800/80 px-3.5 py-1.5 rounded-lg border border-emerald-700/80 text-xs font-medium flex items-center gap-2 shadow-inner">
+                    <span class="text-emerald-300">Next Player ID:</span>
+                    <span id="nextPlayerNumber" class="font-mono font-bold text-emerald-100 text-sm">#001</span>
+                </div>
+            </div>
+            <form id="registrationForm" onsubmit="handleRegister(event)" class="p-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Full Name *</label>
+                        <input type="text" id="regName" required placeholder="e.g. Jane Doe" class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Cellphone Number *</label>
+                        <input type="tel" id="regPhone" required placeholder="(555) 000-0000" oninput="formatPhoneInput(this)" class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Email Address *</label>
+                        <input type="email" id="regEmail" required placeholder="jane@example.com" class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                    </div>
+                </div>
+                <div class="mt-4 flex justify-end">
+                    <button type="submit" class="bg-emerald-700 hover:bg-emerald-600 text-white font-medium text-sm px-6 py-2.5 rounded-lg transition flex items-center gap-2 shadow-sm cursor-pointer">
+                        <i class="fa-solid fa-plus"></i> Register Participant
+                    </button>
+                </div>
+            </form>
+        </section>
+
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
                 <div>
@@ -76,44 +112,21 @@
         </div>
 
         <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-            <div class="bg-slate-900 text-white px-6 py-4 flex justify-between items-center">
-                <div>
-                    <h2 class="text-lg font-semibold flex items-center gap-2">
-                        <i class="fa-solid fa-user-plus text-emerald-400"></i> Official Tournament Registration Form
-                    </h2>
-                    <p class="text-slate-400 text-xs mt-0.5">Complete participant profile, cellphone, and email details for the charity golf event.</p>
+            <div class="px-6 py-4 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-slate-50/50">
+                <div class="flex items-center justify-between w-full sm:w-auto gap-3">
+                    <h3 class="font-semibold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-list text-emerald-600"></i> Registered Participants Roster
+                    </h3>
+                    <span id="rosterCountMobile" class="text-xs text-slate-500 font-medium sm:hidden">0 players</span>
                 </div>
-                <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full text-xs font-mono">
-                    Assigned Number: <span id="nextPlayerNumber">#001</span>
-                </span>
-            </div>
-            <form id="registrationForm" onsubmit="handleRegister(event)" class="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-                <div>
-                    <label class="block text-xs font-medium text-slate-600 mb-1">Full Name *</label>
-                    <input type="text" id="regName" required placeholder="e.g. Jane Doe" class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:outline-none text-sm">
+                <div class="flex items-center gap-3 w-full sm:w-auto">
+                    <!-- Search Input for Participants -->
+                    <div class="relative w-full sm:w-64">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                        <input type="text" id="rosterSearch" oninput="renderRoster()" placeholder="Search no., name, phone, email..." class="w-full pl-8 pr-3 py-1.5 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white">
+                    </div>
+                    <span id="rosterCount" class="text-xs text-slate-500 font-medium hidden sm:inline">0 players</span>
                 </div>
-                <div>
-                    <label class="block text-xs font-medium text-slate-600 mb-1">Cellphone Number *</label>
-                    <input type="tel" id="regPhone" required placeholder="e.g. (555) 019-2834" oninput="formatPhoneInput(this)" class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:outline-none text-sm">
-                </div>
-                <div>
-                    <label class="block text-xs font-medium text-slate-600 mb-1">Email Address *</label>
-                    <input type="email" id="regEmail" required placeholder="e.g. jane@example.com" class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:outline-none text-sm">
-                </div>
-                <div>
-                    <button type="submit" class="w-full bg-emerald-700 hover:bg-emerald-600 text-white font-medium px-5 py-2.5 rounded-lg transition shadow-sm flex items-center justify-center gap-2 cursor-pointer text-sm">
-                        <i class="fa-solid fa-plus"></i> Register Participant
-                    </button>
-                </div>
-            </form>
-        </section>
-
-        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50/50">
-                <h3 class="font-semibold text-slate-800 flex items-center gap-2">
-                    <i class="fa-solid fa-list text-emerald-600"></i> Registered Participants Roster
-                </h3>
-                <span id="rosterCount" class="text-xs text-slate-500 font-medium">0 players</span>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
@@ -123,7 +136,7 @@
                             <th class="py-3 px-6">Player</th>
                             <th class="py-3 px-6">Cellphone</th>
                             <th class="py-3 px-6">Email</th>
-                            <th class="py-3 px-6">Total Score</th>
+                            <th class="py-3 px-6">Total Score & Current Hole</th>
                             <th class="py-3 px-6 text-right">Actions</th>
                         </tr>
                     </thead>
@@ -353,7 +366,7 @@
                 }
             }
 
-            // Populate scorecard modal 18 holes with default value 0 instead of 4
+            // Populate scorecard modal 18 holes with max=99
             const container = document.getElementById('holesInputContainer');
             if (container) {
                 container.innerHTML = '';
@@ -423,7 +436,7 @@
             const players = tournamentState.players;
             document.getElementById('statTotalPlayers').textContent = players.length;
             
-            // Active count or completed round count: considering complete round when all holes > 0
+            // Completed count: considering complete round when all 18 holes > 0
             const completedPlayers = players.filter(p => {
                 let complete = true;
                 for (let i = 1; i <= 18; i++) {
@@ -437,7 +450,7 @@
 
             document.getElementById('statActiveCount').textContent = completedPlayers.length;
 
-            // Calculate overall total scores for podium (only those who completed all 18 holes with >0)
+            // Calculate overall total scores for podium
             const scoredPlayers = completedPlayers.map(p => {
                 let totalScore = 0;
                 for (let i = 1; i <= 18; i++) {
@@ -462,24 +475,69 @@
             const tbody = document.getElementById('rosterTableBody');
             const emptyState = document.getElementById('rosterEmptyState');
             const rosterCount = document.getElementById('rosterCount');
+            const rosterCountMobile = document.getElementById('rosterCountMobile');
+            const searchQuery = (document.getElementById('rosterSearch')?.value || '').toLowerCase().trim();
 
             tbody.innerHTML = '';
-            rosterCount.textContent = `${tournamentState.players.length} players`;
+            
+            const totalCount = tournamentState.players.length;
 
-            if (tournamentState.players.length === 0) {
+            // Filter players based on search query
+            const filteredPlayers = tournamentState.players.filter(p => {
+                if (!searchQuery) return true;
+                const numMatch = p.number ? p.number.toLowerCase().includes(searchQuery) : false;
+                const nameMatch = p.name ? p.name.toLowerCase().includes(searchQuery) : false;
+                const phoneMatch = p.phone ? p.phone.toLowerCase().includes(searchQuery) : false;
+                const emailMatch = p.email ? p.email.toLowerCase().includes(searchQuery) : false;
+                return numMatch || nameMatch || phoneMatch || emailMatch;
+            });
+
+            const displayCountText = searchQuery 
+                ? `${filteredPlayers.length} of ${totalCount} players` 
+                : `${totalCount} players`;
+
+            if (rosterCount) rosterCount.textContent = displayCountText;
+            if (rosterCountMobile) rosterCountMobile.textContent = displayCountText;
+
+            if (filteredPlayers.length === 0) {
                 emptyState.classList.remove('hidden');
+                if (searchQuery) {
+                    emptyState.querySelector('h3').textContent = 'No matching players found';
+                    emptyState.querySelector('p').textContent = `No search results matching "${escapeHtml(searchQuery)}"`;
+                } else {
+                    emptyState.querySelector('h3').textContent = 'No registered players yet';
+                    emptyState.querySelector('p').textContent = 'Get started by adding participants from the registration form above.';
+                }
                 return;
             }
             emptyState.classList.add('hidden');
 
-            tournamentState.players.forEach(p => {
+            filteredPlayers.forEach(p => {
                 let totalScore = 0;
-                let hasPlayed = false;
+                let lastHole = 0;
+                let completedHolesCount = 0;
+
+                // Find cumulative total score and highest hole index with score > 0
                 for (let i = 1; i <= 18; i++) {
-                    if (p.scores[i] > 0) {
+                    if (p.scores[i] && p.scores[i] > 0) {
                         totalScore += p.scores[i];
-                        hasPlayed = true;
+                        lastHole = i;
+                        completedHolesCount++;
                     }
+                }
+
+                let scoreAndHoleDisplay = '<span class="text-slate-400 font-normal italic text-xs">Not started</span>';
+                if (lastHole > 0) {
+                    const holeBadge = (lastHole === 18 && completedHolesCount === 18)
+                        ? `<span class="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full"><i class="fa-solid fa-flag-checkered text-emerald-600"></i> Finished (Hole 18)</span>`
+                        : `<span class="inline-flex items-center gap-1 text-[11px] font-medium text-amber-800 bg-amber-50 border border-amber-200/60 px-2 py-0.5 rounded-full"><i class="fa-solid fa-location-dot text-amber-600"></i> Hole ${lastHole}</span>`;
+
+                    scoreAndHoleDisplay = `
+                        <div class="flex flex-col items-start gap-0.5">
+                            <span class="font-mono font-bold text-slate-900 text-base">${totalScore}</span>
+                            ${holeBadge}
+                        </div>
+                    `;
                 }
 
                 const tr = document.createElement('tr');
@@ -489,7 +547,7 @@
                     <td class="py-3 px-6 font-medium text-slate-900">${escapeHtml(p.name)}</td>
                     <td class="py-3 px-6 text-slate-600 font-mono text-xs"><i class="fa-solid fa-phone mr-1.5 text-emerald-600"></i>${escapeHtml(p.phone || 'N/A')}</td>
                     <td class="py-3 px-6 text-slate-600 text-xs"><i class="fa-solid fa-envelope mr-1.5 text-emerald-600"></i>${escapeHtml(p.email || 'N/A')}</td>
-                    <td class="py-3 px-6 font-mono font-semibold">${hasPlayed ? totalScore : '<span class="text-slate-400 font-normal italic">No scores</span>'}</td>
+                    <td class="py-3 px-6">${scoreAndHoleDisplay}</td>
                     <td class="py-3 px-6 text-right space-x-1 sm:space-x-2">
                         <button onclick="openScorecardModal('${p.id}')" class="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer" title="Edit Scorecard">
                             <i class="fa-solid fa-golf-ball-tee mr-1"></i> Scorecard
