@@ -26,10 +26,7 @@
                     <p class="text-emerald-200 text-sm">Charity Golf Tournament - Persistent Dashboard</p>
                 </div>
             </div>
-            <div class="flex items-center gap-3">
-                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-800 text-emerald-200 border border-emerald-700">
-                    <i class="fa-solid fa-database mr-1.5 text-emerald-400"></i> LocalStorage Persistent Active
-                </span>
+            <div class="flex items-center gap-3 flex-wrap">
                 <button onclick="exportData()" class="bg-emerald-700 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 cursor-pointer shadow-sm">
                     <i class="fa-solid fa-download"></i> Export Data
                 </button>
@@ -60,11 +57,11 @@
             </div>
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
                 <div>
-                    <p class="text-slate-500 text-sm font-medium">Average Handicap</p>
-                    <h4 id="statAvgHandicap" class="text-3xl font-bold text-slate-900 mt-1">0.0</h4>
+                    <p class="text-slate-500 text-sm font-medium">Active Participants</p>
+                    <h4 id="statActiveCount" class="text-3xl font-bold text-slate-900 mt-1">0</h4>
                 </div>
                 <div class="bg-amber-50 text-amber-600 p-4 rounded-xl">
-                    <i class="fa-solid fa-chart-line text-xl"></i>
+                    <i class="fa-solid fa-user-check text-xl"></i>
                 </div>
             </div>
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
@@ -84,24 +81,24 @@
                     <h2 class="text-lg font-semibold flex items-center gap-2">
                         <i class="fa-solid fa-user-plus text-emerald-400"></i> Official Tournament Registration Form
                     </h2>
-                    <p class="text-slate-400 text-xs mt-0.5">Complete your professional profile and handicap details for the charity golf event.</p>
+                    <p class="text-slate-400 text-xs mt-0.5">Complete participant profile, cellphone, and email details for the charity golf event.</p>
                 </div>
                 <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full text-xs font-mono">
                     Assigned Number: <span id="nextPlayerNumber">#001</span>
                 </span>
             </div>
-            <form id="registrationForm" onsubmit="handleRegister(event)" class="p-6 grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            <form id="registrationForm" onsubmit="handleRegister(event)" class="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
                 <div>
                     <label class="block text-xs font-medium text-slate-600 mb-1">Full Name *</label>
                     <input type="text" id="regName" required placeholder="e.g. Jane Doe" class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:outline-none text-sm">
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-slate-600 mb-1">Contact (Email / Phone)</label>
-                    <input type="text" id="regContact" placeholder="e.g. jane@example.com" class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:outline-none text-sm">
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Cellphone Number *</label>
+                    <input type="tel" id="regPhone" required placeholder="e.g. (555) 019-2834" class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:outline-none text-sm">
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-slate-600 mb-1">Handicap (0 - 54)</label>
-                    <input type="number" id="regHandicap" min="0" max="54" step="0.1" value="0" class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:outline-none text-sm">
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Email Address *</label>
+                    <input type="email" id="regEmail" required placeholder="e.g. jane@example.com" class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:outline-none text-sm">
                 </div>
                 <div>
                     <button type="submit" class="w-full bg-emerald-700 hover:bg-emerald-600 text-white font-medium px-5 py-2.5 rounded-lg transition shadow-sm flex items-center justify-center gap-2 cursor-pointer text-sm">
@@ -124,8 +121,8 @@
                         <tr class="bg-slate-100/70 text-slate-600 text-xs font-semibold uppercase tracking-wider border-b border-slate-200">
                             <th class="py-3 px-6">No.</th>
                             <th class="py-3 px-6">Player</th>
-                            <th class="py-3 px-6">Contact</th>
-                            <th class="py-3 px-6">Handicap</th>
+                            <th class="py-3 px-6">Cellphone</th>
+                            <th class="py-3 px-6">Email</th>
                             <th class="py-3 px-6">Total Score</th>
                             <th class="py-3 px-6 text-right">Actions</th>
                         </tr>
@@ -239,12 +236,12 @@
                     <input type="text" id="editName" required class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:outline-none text-sm">
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-slate-600 mb-1">Contact</label>
-                    <input type="text" id="editContact" class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:outline-none text-sm">
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Cellphone Number *</label>
+                    <input type="tel" id="editPhone" required class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:outline-none text-sm">
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-slate-600 mb-1">Handicap</label>
-                    <input type="number" id="editHandicap" min="0" max="54" step="0.1" class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:outline-none text-sm">
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Email Address *</label>
+                    <input type="email" id="editEmail" required class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:outline-none text-sm">
                 </div>
                 <div class="flex justify-end gap-3 pt-2">
                     <button type="button" onclick="closeEditModal()" class="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100 font-medium text-sm transition cursor-pointer">Cancel</button>
@@ -271,7 +268,7 @@
 
     <script>
         // Storage Key for LocalStorage
-        const STORAGE_KEY = 'harmony_golf_tournament_data_v1';
+        const STORAGE_KEY = 'harmony_golf_tournament_data_v3';
 
         // Default app state structure
         let tournamentState = {
@@ -292,6 +289,21 @@
                 const saved = localStorage.getItem(STORAGE_KEY);
                 if (saved) {
                     tournamentState = JSON.parse(saved);
+                } else {
+                    // Fallback check for v2 storage key if migrating
+                    const oldSaved = localStorage.getItem('harmony_golf_tournament_data_v2');
+                    if (oldSaved) {
+                        const parsedOld = JSON.parse(oldSaved);
+                        parsedOld.players = parsedOld.players.map(p => ({
+                            id: p.id,
+                            number: p.number,
+                            name: p.name,
+                            phone: p.phone || p.contact || 'N/A',
+                            email: p.email || 'N/A',
+                            scores: p.scores
+                        }));
+                        tournamentState = parsedOld;
+                    }
                 }
             } catch (e) {
                 console.error("Failed to load local storage data:", e);
@@ -358,25 +370,25 @@
         function handleRegister(e) {
             e.preventDefault();
             const name = document.getElementById('regName').value.trim();
-            const contact = document.getElementById('regContact').value.trim();
-            const handicap = parseFloat(document.getElementById('regHandicap').value) || 0;
+            const phone = document.getElementById('regPhone').value.trim();
+            const email = document.getElementById('regEmail').value.trim();
 
-            if (!name) return;
+            if (!name || !phone || !email) return;
 
             const playerNo = '#' + String(tournamentState.nextNumber).padStart(3, '0');
             
-            // Default 18 holes set to 0 or par 4s (let's initialize to 0 scores representing unplayed holes)
+            // Default 18 holes set to 0 scores representing unplayed holes
             const scores = {};
             for (let i = 1; i <= 18; i++) {
-                scores[i] = 0; // 0 means unplayed / not recorded
+                scores[i] = 0;
             }
 
             const newPlayer = {
-                id: 'player_' + Date.now() + '_' + Math.random().toString(36.25).substr(2, 9),
+                id: 'player_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
                 number: playerNo,
                 name: name,
-                contact: contact || 'N/A',
-                handicap: handicap,
+                phone: phone,
+                email: email,
                 scores: scores
             };
 
@@ -385,7 +397,6 @@
             saveToLocalStorage();
 
             document.getElementById('registrationForm').reset();
-            document.getElementById('regHandicap').value = '0';
             
             renderAll();
             showToast(`Successfully registered ${name} (${playerNo})`);
@@ -407,26 +418,17 @@
         function renderStats() {
             const players = tournamentState.players;
             document.getElementById('statTotalPlayers').textContent = players.length;
-
-            if (players.length > 0) {
-                const totalH = players.reduce((acc, p) => acc + p.handicap, 0);
-                document.getElementById('statAvgHandicap').textContent = (totalH / players.length).toFixed(1);
-            } else {
-                document.getElementById('statAvgHandicap').textContent = '0.0';
-            }
+            document.getElementById('statActiveCount').textContent = players.length;
 
             // Calculate overall total scores for podium
             const scoredPlayers = players.map(p => {
                 let totalScore = 0;
-                let playedAll = true;
                 for (let i = 1; i <= 18; i++) {
                     if (p.scores[i] > 0) {
                         totalScore += p.scores[i];
-                    } else {
-                        playedAll = false;
                     }
                 }
-                return { ...p, totalScore, playedAll };
+                return { ...p, totalScore };
             }).filter(p => p.totalScore > 0);
 
             scoredPlayers.sort((a, b) => a.totalScore - b.totalScore);
@@ -436,7 +438,7 @@
                 podiumEl.textContent = 'No complete rounds yet';
             } else {
                 const top = scoredPlayers[0];
-                podiumEl.innerHTML = `<span class="text-emerald-700 font-bold">1st:</span> ${top.name} (${top.totalScore} strokes)`;
+                podiumEl.innerHTML = `<span class="text-emerald-700 font-bold">1st:</span> ${escapeHtml(top.name)} (${top.totalScore} strokes)`;
             }
         }
 
@@ -470,10 +472,10 @@
                 tr.innerHTML = `
                     <td class="py-3 px-6 font-mono font-semibold text-emerald-800">${p.number}</td>
                     <td class="py-3 px-6 font-medium text-slate-900">${escapeHtml(p.name)}</td>
-                    <td class="py-3 px-6 text-slate-500 text-xs">${escapeHtml(p.contact)}</td>
-                    <td class="py-3 px-6 text-slate-600 font-mono">${p.handicap}</td>
+                    <td class="py-3 px-6 text-slate-600 font-mono text-xs"><i class="fa-solid fa-phone mr-1.5 text-emerald-600"></i>${escapeHtml(p.phone || 'N/A')}</td>
+                    <td class="py-3 px-6 text-slate-600 text-xs"><i class="fa-solid fa-envelope mr-1.5 text-emerald-600"></i>${escapeHtml(p.email || 'N/A')}</td>
                     <td class="py-3 px-6 font-mono font-semibold">${hasPlayed ? totalScore : '<span class="text-slate-400 font-normal italic">No scores</span>'}</td>
-                    <td class="py-3 px-6 text-right space-x-2">
+                    <td class="py-3 px-6 text-right space-x-1 sm:space-x-2">
                         <button onclick="openScorecardModal('${p.id}')" class="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer" title="Edit Scorecard">
                             <i class="fa-solid fa-golf-ball-tee mr-1"></i> Scorecard
                         </button>
@@ -502,18 +504,14 @@
 
             tbody.innerHTML = '';
 
-            // Calculate cumulative scores up to targetHole for each player
             const rankings = [];
             tournamentState.players.forEach(p => {
                 let cumulative = 0;
                 let holeScore = p.scores[targetHole] || 0;
-                let hasRecordedUpToHole = true;
 
                 for (let h = 1; h <= targetHole; h++) {
                     if (p.scores[h] && p.scores[h] > 0) {
                         cumulative += p.scores[h];
-                    } else {
-                        hasRecordedUpToHole = false;
                     }
                 }
 
@@ -521,13 +519,11 @@
                     rankings.push({
                         ...p,
                         holeScore,
-                        cumulative,
-                        hasRecordedUpToHole
+                        cumulative
                     });
                 }
             });
 
-            // Sort by cumulative score ascending (golf lower score is better)
             rankings.sort((a, b) => a.cumulative - b.cumulative);
 
             rankedCount.textContent = `${rankings.length} players ranked`;
@@ -563,12 +559,12 @@
             if (!player) return;
 
             document.getElementById('activeScorePlayerId').value = player.id;
-            document.getElementById('modalPlayerSubtitle').textContent = `Player ${player.number} - ${player.name}`;
+            document.getElementById('modalPlayerSubtitle').textContent = `Player ${player.number} - ${player.name} (${player.phone || 'N/A'})`;
 
             const inputs = document.querySelectorAll('.score-hole-input');
             inputs.forEach(input => {
                 const holeNum = input.getAttribute('data-hole');
-                input.value = player.scores[holeNum] || 4; // default to par 4 if empty
+                input.value = player.scores[holeNum] || 4;
             });
 
             calculateModalTotal();
@@ -613,8 +609,8 @@
 
             document.getElementById('editPlayerId').value = player.id;
             document.getElementById('editName').value = player.name;
-            document.getElementById('editContact').value = player.contact;
-            document.getElementById('editHandicap').value = player.handicap;
+            document.getElementById('editPhone').value = player.phone || '';
+            document.getElementById('editEmail').value = player.email || '';
 
             document.getElementById('editModal').classList.remove('hidden');
         }
@@ -630,8 +626,8 @@
             if (!player) return;
 
             player.name = document.getElementById('editName').value.trim();
-            player.contact = document.getElementById('editContact').value.trim();
-            player.handicap = parseFloat(document.getElementById('editHandicap').value) || 0;
+            player.phone = document.getElementById('editPhone').value.trim();
+            player.email = document.getElementById('editEmail').value.trim();
 
             saveToLocalStorage();
             closeEditModal();
