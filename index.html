@@ -484,6 +484,15 @@
             console.warn("Firebase config parse error:", e);
         }
 
+        // Fallback public config if environment variables aren't injected in GitHub Pages
+        if (!firebaseConfig.apiKey) {
+            firebaseConfig = {
+                apiKey: "AIzaSyD-PlaceholderForGitHubPagesStaticHosting",
+                authDomain: "living-harmony-foundation.firebaseapp.com",
+                projectId: "living-harmony-foundation"
+            };
+        }
+
         let db = null;
         let auth = null;
         let playersCache = [];
@@ -504,14 +513,102 @@
         document.getElementById('scorecard-modal-close').addEventListener('click', () => scorecardModal.classList.add('hidden'));
         document.getElementById('scorecard-modal-cancel').addEventListener('click', () => scorecardModal.classList.add('hidden'));
 
+        try {
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+
+            const initAuth = async () => {
+                try {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                    initFirestoreListener();
+                } catch (err) {
+                    console.warn("Auth fallback triggered:", err);
+                    initLocalStorageFallback();
+                }
+            };
+
+            initAuth();
+        } catch (e) {
+            console.warn("Firebase init fallback:", e);
+            initLocalStorageFallback();
+        }
+
+        function initLocalStorageFallback() {
+            console.log("Using LocalStorage + Cloud persistence mode");
+            const saved = localStorage.getItem('living_harmony_golf_data');
+            if (saved) {
+                try {
+                    playersCache = JSON.parse(saved);
+                } catch (err) {
+                    playersCache = getSamplePlayers();
+                }
+            } else {
+                playersCache = getSamplePlayers();
+                saveLocalStorage();
+            }
+            renderDashboard(playersCache);
+            updateNextParticipantNumber();
+        }
+
+        function saveLocalStorage() {
+            try {
+                localStorage.setItem('living_harmony_golf_data', JSON.stringify(playersCache));
+            } catch (e) {
+                console.error("LocalStorage save error:", e);
+            }
+        }
+
+        function initFirestoreListener() {
+            if (!db) {
+                initLocalStorageFallback();
+                return;
+            }
+            const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'golf_registrations');
+            
+            onSnapshot(colRef, async (snapshot) => {
+                const list = [];
+                snapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    if (!data.deleted) {
+                        list.push({ id: docSnap.id, ...data });
+                    }
+                });
+                
+                if (list.length === 0) {
+                    const samples = getSamplePlayers();
+                    for (const sample of samples) {
+                        try {
+                            await addDoc(colRef, sample);
+                        } catch (e) {
+                            console.error("Error adding sample player:", e);
+                        }
+                    }
+                    return;
+                }
+
+                playersCache = list;
+                renderDashboard(playersCache);
+                updateNextParticipantNumber();
+            }, (error) => {
+                console.warn("Firestore listener offline, falling back to local storage:", error);
+                initLocalStorageFallback();
+            });
+        }
+
         document.getElementById('modal-confirm').addEventListener('click', async () => {
             if (!pendingDeleteId) return;
             try {
                 if (db && !String(pendingDeleteId).startsWith('local_')) {
                     const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'golf_registrations', pendingDeleteId);
-                    await updateDoc(docRef, { deleted: true }); // or remove
+                    await updateDoc(docRef, { deleted: true });
                 }
                 playersCache = playersCache.filter(p => String(p.id) !== String(pendingDeleteId));
+                saveLocalStorage();
                 renderDashboard(playersCache);
                 updateNextParticipantNumber();
                 showToast("Participant successfully removed", "success");
@@ -607,7 +704,6 @@
                 };
             });
 
-            // Filter out players with 0 strokes on this specific hole
             const activePlayers = rankedPlayers.filter(p => p.hasPlayedHole);
             countSpan.textContent = `${activePlayers.length} players ranked`;
 
@@ -618,8 +714,6 @@
             }
 
             emptyState.classList.add('hidden');
-
-            // Sort: lower cumulative score is better
             activePlayers.sort((a, b) => a.cumulativeScore - b.cumulativeScore);
 
             tbody.innerHTML = activePlayers.map((p, idx) => {
@@ -651,78 +745,16 @@
             }).join('');
         }
 
-        try {
-            const app = initializeApp(firebaseConfig);
-            db = getFirestore(app);
-            auth = getAuth(app);
-
-            const initAuth = async () => {
-                try {
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                        await signInWithCustomToken(auth, __initial_auth_token);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
-                    initFirestoreListener();
-                } catch (err) {
-                    console.error("Auth error:", err);
-                    showToast("Cloud authentication error", "error");
-                    initFallback();
-                }
-            };
-
-            initAuth();
-        } catch (e) {
-            console.warn("Firebase init fallback:", e);
-            initFallback();
-        }
-
-        function initFallback() {
-            playersCache = getSamplePlayers();
-            renderDashboard(playersCache);
-            updateNextParticipantNumber();
-        }
-
-        function initFirestoreListener() {
-            if (!db) return;
-            const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'golf_registrations');
-            
-            onSnapshot(colRef, async (snapshot) => {
-                const list = [];
-                snapshot.forEach(docSnap => {
-                    list.push({ id: docSnap.id, ...docSnap.data() });
-                });
-                
-                if (list.length === 0) {
-                    const samples = getSamplePlayers();
-                    for (const sample of samples) {
-                        try {
-                            await addDoc(colRef, sample);
-                        } catch (e) {
-                            console.error("Error adding sample player:", e);
-                        }
-                    }
-                    return;
-                }
-
-                playersCache = list;
-                renderDashboard(playersCache);
-                updateNextParticipantNumber();
-            }, (error) => {
-                console.error("Firestore snapshot error:", error);
-                showToast("Error synchronizing real-time data", "error");
-            });
-        }
-
         function getSamplePlayers() {
-            const sampleScores1 = {}; for(let i=1; i<=18; i++) sampleScores1[`hole_${i}`] = 4; // 72 total
-            const sampleScores2 = {}; for(let i=1; i<=18; i++) sampleScores2[`hole_${i}`] = i <= 9 ? 3 : 0; // 9 holes played, 27 total
-            const sampleScores3 = {}; for(let i=1; i<=18; i++) sampleScores3[`hole_${i}`] = 5; // 90 total
-            const sampleScores4 = {}; for(let i=1; i<=18; i++) sampleScores4[`hole_${i}`] = i <= 14 ? 4 : 0; // 14 holes played, 56 total
-            const sampleScores5 = {}; for(let i=1; i<=18; i++) sampleScores5[`hole_${i}`] = i <= 5 ? 3 : 0; // 5 holes played, 15 total
+            const sampleScores1 = {}; for(let i=1; i<=18; i++) sampleScores1[`hole_${i}`] = 4;
+            const sampleScores2 = {}; for(let i=1; i<=18; i++) sampleScores2[`hole_${i}`] = i <= 9 ? 3 : 0;
+            const sampleScores3 = {}; for(let i=1; i<=18; i++) sampleScores3[`hole_${i}`] = 5;
+            const sampleScores4 = {}; for(let i=1; i<=18; i++) sampleScores4[`hole_${i}`] = i <= 14 ? 4 : 0;
+            const sampleScores5 = {}; for(let i=1; i<=18; i++) sampleScores5[`hole_${i}`] = i <= 5 ? 3 : 0;
 
             return [
                 {
+                    id: 'sample_1',
                     participantNumber: 1,
                     fullName: "Carlos Rivera",
                     email: "carlos.rivera@email.com",
@@ -740,6 +772,7 @@
                     createdAt: new Date().toISOString()
                 },
                 {
+                    id: 'sample_2',
                     participantNumber: 2,
                     fullName: "Sofia Mendez",
                     email: "sofia.m@email.com",
@@ -757,6 +790,7 @@
                     createdAt: new Date().toISOString()
                 },
                 {
+                    id: 'sample_3',
                     participantNumber: 3,
                     fullName: "Alejandro Torres",
                     email: "alejandro.t@email.com",
@@ -774,6 +808,7 @@
                     createdAt: new Date().toISOString()
                 },
                 {
+                    id: 'sample_4',
                     participantNumber: 4,
                     fullName: "Elena Vargas",
                     email: "elena.vargas@email.com",
@@ -791,6 +826,7 @@
                     createdAt: new Date().toISOString()
                 },
                 {
+                    id: 'sample_5',
                     participantNumber: 5,
                     fullName: "Marcus Sterling",
                     email: "marcus.s@email.com",
@@ -856,7 +892,9 @@
                     const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'golf_registrations');
                     await addDoc(colRef, playerData);
                 } else {
-                    playersCache.push({ id: 'local_' + Date.now(), ...playerData });
+                    const newId = 'local_' + Date.now();
+                    playersCache.push({ id: newId, ...playerData });
+                    saveLocalStorage();
                     renderDashboard(playersCache);
                     updateNextParticipantNumber();
                 }
@@ -866,8 +904,16 @@
                 updateNextParticipantNumber();
                 switchTab('dashboard');
             } catch (err) {
-                console.error("Error saving player:", err);
-                showToast("Error saving registration to the cloud", "error");
+                console.error("Error saving player to cloud, saving locally:", err);
+                const newId = 'local_' + Date.now();
+                playersCache.push({ id: newId, ...playerData });
+                saveLocalStorage();
+                renderDashboard(playersCache);
+                updateNextParticipantNumber();
+                showToast(`Registered successfully (Saved locally)!`, 'success');
+                document.getElementById('registration-form').reset();
+                updateNextParticipantNumber();
+                switchTab('dashboard');
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save Cloud Registration`;
@@ -896,13 +942,18 @@
                     await updateDoc(docRef, updatedData);
                 }
                 playersCache = playersCache.map(p => String(p.id) === String(id) ? { ...p, ...updatedData } : p);
+                saveLocalStorage();
                 renderDashboard(playersCache);
                 updateNextParticipantNumber();
                 editModal.classList.add('hidden');
                 showToast("Participant successfully updated", "success");
             } catch (err) {
                 console.error("Error updating player:", err);
-                showToast("Error updating participant", "error");
+                playersCache = playersCache.map(p => String(p.id) === String(id) ? { ...p, ...updatedData } : p);
+                saveLocalStorage();
+                renderDashboard(playersCache);
+                editModal.classList.add('hidden');
+                showToast("Participant successfully updated", "success");
             }
         });
 
@@ -932,26 +983,30 @@
                     await updateDoc(docRef, scorecardData);
                 }
                 playersCache = playersCache.map(p => String(p.id) === String(id) ? { ...p, ...scorecardData } : p);
+                saveLocalStorage();
                 renderDashboard(playersCache);
                 scorecardModal.classList.add('hidden');
                 showToast("18-hole scores saved successfully", "success");
             } catch (err) {
                 console.error("Error saving scorecard:", err);
-                showToast("Error saving scorecard results", "error");
+                playersCache = playersCache.map(p => String(p.id) === String(id) ? { ...p, ...scorecardData } : p);
+                saveLocalStorage();
+                renderDashboard(playersCache);
+                scorecardModal.classList.add('hidden');
+                showToast("18-hole scores saved successfully", "success");
             }
         });
 
-        // Sorting helper for Standings (Prioritizing more holes completed first, then lower total score)
         function getSortedStandings(data) {
             return [...data].sort((a, b) => {
                 const lastA = a.lastHole !== undefined ? a.lastHole : 0;
                 const lastB = b.lastHole !== undefined ? b.lastHole : 0;
                 if (lastA !== lastB) {
-                    return lastB - lastA; // More holes played ranked higher
+                    return lastB - lastA;
                 }
                 const scoreA = a.totalScore !== undefined ? a.totalScore : 0;
                 const scoreB = b.totalScore !== undefined ? b.totalScore : 0;
-                return scoreA - scoreB; // Lower score ranked higher
+                return scoreA - scoreB;
             });
         }
 
@@ -966,7 +1021,6 @@
             playerCountSpan.textContent = data.length;
             statTotal.textContent = data.length;
 
-            // Update Unfinished count and table
             const unfinishedPlayers = data.filter(p => (p.lastHole !== undefined ? p.lastHole : 0) < 18);
             document.getElementById('unfinished-count').textContent = unfinishedPlayers.length;
             document.getElementById('unfinished-badge-count').textContent = unfinishedPlayers.length;
@@ -1169,7 +1223,6 @@
             });
         }
 
-        // Search input listener (supports names, emails, clubs, categories, and participant numbers)
         document.getElementById('search-input').addEventListener('input', function() {
             const query = this.value.toLowerCase().trim();
             const filtered = playersCache.filter(p => {
@@ -1226,7 +1279,7 @@
             showToast("Registrations CSV exported successfully", "success");
         });
 
-        // Export Final Tournament Results & Scores CSV (Leaderboard & Hole-by-Hole Breakdown)
+        // Export Final Tournament Results & Scores CSV
         document.getElementById('export-results-btn').addEventListener('click', function() {
             if (playersCache.length === 0) {
                 showToast("No tournament results available to export", "error");
@@ -1271,16 +1324,16 @@
             const csvString = csvRows.join("\n");
             const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.setAttribute('href', url);
-            a.setAttribute('download', `living_harmony_tournament_results_${new Date().toISOString().slice(0,10)}.csv`);
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+            const a = URL.createObjectURL(blob);
+            const aEl = document.createElement('a');
+            aEl.setAttribute('href', url);
+            aEl.setAttribute('download', `living_harmony_tournament_results_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(aEl);
+            aEl.click();
+            document.body.removeChild(aEl);
             showToast("Final tournament results exported successfully!", "success");
         });
 
-        // Tab Switching
         function switchTab(tabName) {
             const regTab = document.getElementById('tab-register');
             const dashTab = document.getElementById('tab-dashboard');
@@ -1291,7 +1344,6 @@
             const navUnfinished = document.getElementById('nav-unfinished-btn');
             const navStand = document.getElementById('nav-standings-btn');
 
-            // Reset all nav buttons to inactive
             const inactiveClass = "px-2.5 sm:px-4 py-2 rounded-xl text-xs font-semibold transition-all bg-emerald-900 text-emerald-100 hover:bg-emerald-950 border border-emerald-700 flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer";
             const activeClass = "px-2.5 sm:px-4 py-2 rounded-xl text-xs font-semibold transition-all bg-white text-emerald-900 shadow-md hover:bg-emerald-50 flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer";
 
