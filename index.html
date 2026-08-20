@@ -219,50 +219,6 @@
         </div>
     </div>
 
-    <!-- Leaderboard by Hole Section -->
-    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <div class="px-6 py-4 border-b border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4 bg-slate-50/50">
-            <div>
-                <h2 class="font-semibold text-slate-800 flex items-center gap-2">
-                    <i class="fa-solid fa-trophy text-amber-500"></i> Cumulative Leaderboard by Hole
-                </h2>
-                <p class="text-slate-500 text-xs mt-0.5">Select a specific hole to see how players rank cumulatively up to that hole.</p>
-            </div>
-            <div class="flex items-center gap-2">
-                <label class="text-xs font-medium text-slate-600">Select Hole:</label>
-                <select id="leaderboardHoleSelect" onchange="renderLeaderboard()" class="px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-sm font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none">
-                    <!-- Populated dynamically 1-18 -->
-                </select>
-            </div>
-        </div>
-        <div class="p-6">
-            <div class="flex justify-between items-center mb-4">
-                <h3 id="leaderboardTitle" class="font-bold text-slate-800 text-base">Leaderboard after Hole 1</h3>
-                <span id="leaderboardRankedCount" class="text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full font-medium">0 players ranked</span>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="bg-slate-100/70 text-slate-600 text-xs font-semibold uppercase tracking-wider border-b border-slate-200">
-                            <th class="py-3 px-4">Rank</th>
-                            <th class="py-3 px-4">Participant No. & Name</th>
-                            <th class="py-3 px-4">Score on Hole</th>
-                            <th class="py-3 px-4">Cumulative Total</th>
-                        </tr>
-                    </thead>
-                    <tbody id="leaderboardTableBody" class="divide-y divide-slate-100 text-sm">
-                        <!-- Populated via Javascript -->
-                    </tbody>
-                </table>
-            </div>
-            <div id="leaderboardEmptyState" class="py-12 text-center">
-                <div class="text-slate-300 text-4xl mb-3"><i class="fa-solid fa-chart-bar"></i></div>
-                <h3 class="font-semibold text-slate-700 text-base">No scores recorded for this hole yet</h3>
-                <p class="text-slate-400 text-xs mt-1">Enter scores in player scorecards to view real-time standings per hole.</p>
-            </div>
-        </div>
-    </section>
-
     <div id="editModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div class="bg-slate-900 text-white px-6 py-4 flex justify-between items-center">
