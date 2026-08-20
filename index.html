@@ -219,6 +219,50 @@
         </div>
     </div>
 
+    <!-- Leaderboard by Hole Section -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4 bg-slate-50/50">
+            <div>
+                <h2 class="font-semibold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-trophy text-amber-500"></i> Cumulative Leaderboard by Hole
+                </h2>
+                <p class="text-slate-500 text-xs mt-0.5">Select a specific hole to see how players rank cumulatively up to that hole.</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <label class="text-xs font-medium text-slate-600">Select Hole:</label>
+                <select id="leaderboardHoleSelect" onchange="renderLeaderboard()" class="px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-sm font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                    <!-- Populated dynamically 1-18 -->
+                </select>
+            </div>
+        </div>
+        <div class="p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="leaderboardTitle" class="font-bold text-slate-800 text-base">Leaderboard after Hole 1</h3>
+                <span id="leaderboardRankedCount" class="text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full font-medium">0 players ranked</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-100/70 text-slate-600 text-xs font-semibold uppercase tracking-wider border-b border-slate-200">
+                            <th class="py-3 px-4">Rank</th>
+                            <th class="py-3 px-4">Participant No. & Name</th>
+                            <th class="py-3 px-4">Score on Hole</th>
+                            <th class="py-3 px-4">Cumulative Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboardTableBody" class="divide-y divide-slate-100 text-sm">
+                        <!-- Populated via Javascript -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="leaderboardEmptyState" class="py-12 text-center">
+                <div class="text-slate-300 text-4xl mb-3"><i class="fa-solid fa-chart-bar"></i></div>
+                <h3 class="font-semibold text-slate-700 text-base">No scores recorded for this hole yet</h3>
+                <p class="text-slate-400 text-xs mt-1">Enter scores in player scorecards to view real-time standings per hole.</p>
+            </div>
+        </div>
+    </section>
+
     <div id="editModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div class="bg-slate-900 text-white px-6 py-4 flex justify-between items-center">
@@ -290,7 +334,6 @@
                 if (saved) {
                     tournamentState = JSON.parse(saved);
                 } else {
-                    // Fallback check for v2 storage key if migrating
                     const oldSaved = localStorage.getItem('harmony_golf_tournament_data_v2');
                     if (oldSaved) {
                         const parsedOld = JSON.parse(oldSaved);
@@ -344,25 +387,29 @@
         // Populate Hole Select dropdowns (1-18)
         function populateHoleSelects() {
             const select = document.getElementById('leaderboardHoleSelect');
-            select.innerHTML = '';
-            for (let i = 1; i <= 18; i++) {
-                const opt = document.createElement('option');
-                opt.value = i;
-                opt.textContent = `Hole ${i}`;
-                select.appendChild(opt);
+            if (select) {
+                select.innerHTML = '';
+                for (let i = 1; i <= 18; i++) {
+                    const opt = document.createElement('option');
+                    opt.value = i;
+                    opt.textContent = `Hole ${i}`;
+                    select.appendChild(opt);
+                }
             }
 
-            // Populate scorecard modal 18 holes
+            // Populate scorecard modal 18 holes with default value 0 instead of 4
             const container = document.getElementById('holesInputContainer');
-            container.innerHTML = '';
-            for (let i = 1; i <= 18; i++) {
-                const div = document.createElement('div');
-                div.className = 'bg-slate-50 p-3 rounded-xl border border-slate-200';
-                div.innerHTML = `
-                    <label class="block text-xs font-semibold text-slate-700 mb-1">Hole ${i}</label>
-                    <input type="number" min="1" max="15" value="4" data-hole="${i}" onchange="calculateModalTotal()" class="score-hole-input w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-center font-mono text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
-                `;
-                container.appendChild(div);
+            if (container) {
+                container.innerHTML = '';
+                for (let i = 1; i <= 18; i++) {
+                    const div = document.createElement('div');
+                    div.className = 'bg-slate-50 p-3 rounded-xl border border-slate-200';
+                    div.innerHTML = `
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Hole ${i}</label>
+                        <input type="number" min="0" max="15" value="0" data-hole="${i}" onchange="calculateModalTotal()" class="score-hole-input w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-center font-mono text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                    `;
+                    container.appendChild(div);
+                }
             }
         }
 
@@ -411,25 +458,37 @@
         }
 
         function renderNextNumberBadge() {
-            document.getElementById('nextPlayerNumber').textContent = '#' + String(tournamentState.nextNumber).padStart(3, '0');
+            const badge = document.getElementById('nextPlayerNumber');
+            if (badge) badge.textContent = '#' + String(tournamentState.nextNumber).padStart(3, '0');
         }
 
         // Render statistics summary cards
         function renderStats() {
             const players = tournamentState.players;
             document.getElementById('statTotalPlayers').textContent = players.length;
-            document.getElementById('statActiveCount').textContent = players.length;
-
-            // Calculate overall total scores for podium
-            const scoredPlayers = players.map(p => {
-                let totalScore = 0;
+            
+            // Active count or completed round count: considering complete round when all holes > 0
+            const completedPlayers = players.filter(p => {
+                let complete = true;
                 for (let i = 1; i <= 18; i++) {
-                    if (p.scores[i] > 0) {
-                        totalScore += p.scores[i];
+                    if (!p.scores[i] || p.scores[i] <= 0) {
+                        complete = false;
+                        break;
                     }
                 }
+                return complete;
+            });
+
+            document.getElementById('statActiveCount').textContent = completedPlayers.length;
+
+            // Calculate overall total scores for podium (only those who completed all 18 holes with >0)
+            const scoredPlayers = completedPlayers.map(p => {
+                let totalScore = 0;
+                for (let i = 1; i <= 18; i++) {
+                    totalScore += p.scores[i];
+                }
                 return { ...p, totalScore };
-            }).filter(p => p.totalScore > 0);
+            });
 
             scoredPlayers.sort((a, b) => a.totalScore - b.totalScore);
 
@@ -494,6 +553,7 @@
         // Render cumulative leaderboard by selected hole
         function renderLeaderboard() {
             const holeSelect = document.getElementById('leaderboardHoleSelect');
+            if (!holeSelect) return;
             const targetHole = parseInt(holeSelect.value) || 1;
             
             document.getElementById('leaderboardTitle').textContent = `Leaderboard after Hole ${targetHole}`;
@@ -564,7 +624,7 @@
             const inputs = document.querySelectorAll('.score-hole-input');
             inputs.forEach(input => {
                 const holeNum = input.getAttribute('data-hole');
-                input.value = player.scores[holeNum] || 4;
+                input.value = player.scores[holeNum] !== undefined ? player.scores[holeNum] : 0;
             });
 
             calculateModalTotal();
